@@ -35,7 +35,7 @@
 
 #import <Availability.h>
 
-#import "JUDef.h"
+#import "ZXDef.h"
 #undef weak_delegate
 #if __has_feature(objc_arc_weak)
 #define weak_delegate weak
