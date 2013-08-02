@@ -32,7 +32,7 @@
 
 #import "iConsole.h"
 #import <stdarg.h>
-#import <string.h> 
+#import <string.h>
 
 
 #import <Availability.h>
@@ -45,13 +45,14 @@
 #import "GTMStackTrace.h"
 #endif
 
-
+#define HUAMING_HEIGHT 15
 #define EDITFIELD_HEIGHT 28
 #define ACTION_BUTTON_WIDTH 28
-
+#define HUAMING_LABEL_WIDTH 35
 
 @interface iConsole() <UITextFieldDelegate, UIActionSheetDelegate>
 
+@property (nonatomic,strong) UIView *huamingView;
 @property (nonatomic, strong) UITextView *consoleView;
 @property (nonatomic, strong) UITextField *inputField;
 @property (nonatomic, strong) UIButton *actionButton;
@@ -60,7 +61,7 @@
 
 - (void)saveSettings;
 
-void exceptionHandler(NSException *exception);
+void iConsole_exceptionHandler(NSException *exception);
 
 @end
 
@@ -70,7 +71,7 @@ void exceptionHandler(NSException *exception);
 #pragma mark -
 #pragma mark Private methods
 
-void exceptionHandler(NSException *exception)
+void iConsole_exceptionHandler(NSException *exception)
 {
 	
 #if ICONSOLE_USE_GOOGLE_STACK_TRACE
@@ -81,9 +82,9 @@ void exceptionHandler(NSException *exception)
 #else
 	
 	[iConsole crash:@"%@", exception];
-	 
+    
 #endif
-
+    
 	[[iConsole sharedConsole] saveSettings];
 }
 
@@ -120,6 +121,11 @@ void exceptionHandler(NSException *exception)
 	}
 	text = [text stringByAppendingString:@"\n--------------------------------------\n"];
 	text = [text stringByAppendingString:[[_log arrayByAddingObject:@">"] componentsJoinedByString:@"\n"]];
+    //text = [text stringByAppendingString:@"                                    @子循"];
+    
+    
+    
+    _consoleView.dataDetectorTypes = UIDataDetectorTypeLink;
 	_consoleView.text = text;
 	
 	[_consoleView scrollRangeToVisible:NSMakeRange(_consoleView.text.length, 0)];
@@ -144,7 +150,7 @@ void exceptionHandler(NSException *exception)
     if ([view isFirstResponder])
 	{
         [view resignFirstResponder];
-        return YES;     
+        return YES;
     }
     for (UIView *subview in view.subviews)
 	{
@@ -165,7 +171,7 @@ void exceptionHandler(NSException *exception)
                                               cancelButtonTitle:@"Cancel"
                                          destructiveButtonTitle:@"Clear Log"
                                               otherButtonTitles:@"Send by Email", nil];
-
+    
 	sheet.actionSheetStyle = UIActionSheetStyleBlackOpaque;
 	[sheet showInView:self.view];
 }
@@ -218,7 +224,7 @@ void exceptionHandler(NSException *exception)
 }
 
 - (void)showConsole
-{	
+{
 	if (!_animating && self.view.superview == nil)
 	{
         [self setConsoleText];
@@ -277,6 +283,7 @@ void exceptionHandler(NSException *exception)
 		//workaround for autoresizeing glitch
 		CGRect frame = self.view.bounds;
 		frame.size.height -= EDITFIELD_HEIGHT + 10;
+        
 		self.consoleView.frame = frame;
 	}
 }
@@ -310,7 +317,7 @@ void exceptionHandler(NSException *exception)
 }
 
 - (void)keyboardWillShow:(NSNotification *)notification
-{	
+{
 	CGRect frame = [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
 	CGFloat duration = [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] floatValue];
 	UIViewAnimationCurve curve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] intValue];
@@ -353,7 +360,7 @@ void exceptionHandler(NSException *exception)
 	[UIView setAnimationDuration:duration];
 	[UIView setAnimationCurve:curve];
 	
-	self.view.frame = [self onscreenFrame];	
+	self.view.frame = [self onscreenFrame];
 	
 	[UIView commitAnimations];
 }
@@ -377,6 +384,7 @@ void exceptionHandler(NSException *exception)
 
 - (void)textFieldDidEndEditing:(UITextField *)textField
 {
+    [iConsole info:@"invoke textFieldDidEndEditing"];
 	if (![textField.text isEqualToString:@""])
 	{
 		[iConsole log:textField.text];
@@ -417,7 +425,7 @@ void exceptionHandler(NSException *exception)
         NSString *URLSafeLog = [self URLEncodedString:[_log componentsJoinedByString:@"\n"]];
         NSMutableString *URLString = [NSMutableString stringWithFormat:@"mailto:%@?subject=%@%%20Console%%20Log&body=%@",
                                       _logSubmissionEmail ?: @"", URLSafeName, URLSafeLog];
-
+        
         [[UIApplication sharedApplication] openURL:[NSURL URLWithString:URLString]];
 	}
 }
@@ -435,7 +443,7 @@ void exceptionHandler(NSException *exception)
         {
             sharedConsole = [[self alloc] init];
         }
-        return sharedConsole; 
+        return sharedConsole;
     }
 }
 
@@ -446,8 +454,25 @@ void exceptionHandler(NSException *exception)
         
 #if ICONSOLE_ADD_EXCEPTION_HANDLER
         
-        NSSetUncaughtExceptionHandler(&exceptionHandler);
+        NSSetUncaughtExceptionHandler(&iConsole_exceptionHandler);
         
+#endif
+        
+        
+        //在预发和Daily环境iConsole可用在正式环境iConsole禁用
+#ifdef PRERELEASE_MODE
+        _simulatorTouchesToShow = 2;
+        _deviceTouchesToShow = 3;
+#endif
+        
+#ifdef DAILY_MODE
+        _simulatorTouchesToShow = 2;
+        _deviceTouchesToShow = 3;
+#endif
+        
+#ifdef RELEASE_MODE
+        _simulatorTouchesToShow = 2;
+        _deviceTouchesToShow = 3;
 #endif
         
         _enabled = YES;
@@ -456,8 +481,6 @@ void exceptionHandler(NSException *exception)
         _maxLogItems = 1000;
         _delegate = nil;
         
-        _simulatorTouchesToShow = 2;
-        _deviceTouchesToShow = 3;
         _simulatorShakeToShow = YES;
         _deviceShakeToShow = NO;
         
@@ -465,8 +488,8 @@ void exceptionHandler(NSException *exception)
         self.inputPlaceholderString = @"Enter command...";
         self.logSubmissionEmail = nil;
         
-        self.backgroundColor = [UIColor blackColor];
-        self.textColor = [UIColor whiteColor];
+        self.backgroundColor = [UIColor whiteColor];
+        self.textColor = [UIColor blackColor];
         self.indicatorStyle = UIScrollViewIndicatorStyleWhite;
         
         [[NSUserDefaults standardUserDefaults] synchronize];
@@ -479,7 +502,7 @@ void exceptionHandler(NSException *exception)
                                                          name:UIApplicationDidEnterBackgroundNotification
                                                        object:nil];
         }
-
+        
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(saveSettings)
                                                      name:UIApplicationWillTerminateNotification
@@ -503,8 +526,9 @@ void exceptionHandler(NSException *exception)
     self.view.clipsToBounds = YES;
 	self.view.backgroundColor = _backgroundColor;
 	self.view.autoresizesSubviews = YES;
-
-	_consoleView = [[UITextView alloc] initWithFrame:self.view.bounds];
+    //CGRectMake(self.view.bounds.origin.x, self.view.bounds.origin.y, self.view.bounds.size.width, self.view.bounds.size.height/2)
+    
+	_consoleView = [[UITextView alloc] initWithFrame:self.view.bounds];//self.view.bounds
 	_consoleView.font = [UIFont fontWithName:@"Courier" size:12];
 	_consoleView.textColor = _textColor;
 	_consoleView.backgroundColor = [UIColor clearColor];
@@ -514,14 +538,44 @@ void exceptionHandler(NSException *exception)
 	[self setConsoleText];
 	[self.view addSubview:_consoleView];
 	
+    
+    
+    
+    
+    
+    _huamingView = [[UIView alloc]initWithFrame:CGRectMake(self.view.frame.size.width-HUAMING_LABEL_WIDTH,
+                                                           self.view.frame.size.height - HUAMING_HEIGHT- EDITFIELD_HEIGHT - 5,
+                                                           HUAMING_LABEL_WIDTH, HUAMING_HEIGHT)];
+    _huamingView.backgroundColor = [UIColor redColor];
+    _huamingView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+    [self.view addSubview:_huamingView];
+    UILabel *huamingLabel  = [[UILabel alloc]init];
+    
+    huamingLabel.font = [UIFont fontWithName:@"Courier" size:12];
+    huamingLabel.textColor =_textColor;
+    huamingLabel.text = @"@子循";
+    huamingLabel.frame = CGRectMake(0,
+                                    0,
+                                    HUAMING_LABEL_WIDTH, HUAMING_HEIGHT);
+    [self.huamingView addSubview:huamingLabel];
+    
+	
+    
+    
+    
+    
+    
+    
+    
+    
 	self.actionButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_actionButton setTitle:@"⚙" forState:UIControlStateNormal];
     [_actionButton setTitleColor:_textColor forState:UIControlStateNormal];
     [_actionButton setTitleColor:[_textColor colorWithAlphaComponent:0.5f] forState:UIControlStateHighlighted];
     _actionButton.titleLabel.font = [_actionButton.titleLabel.font fontWithSize:ACTION_BUTTON_WIDTH];
 	_actionButton.frame = CGRectMake(self.view.frame.size.width - ACTION_BUTTON_WIDTH - 5,
-                                   self.view.frame.size.height - EDITFIELD_HEIGHT - 5,
-                                   ACTION_BUTTON_WIDTH, EDITFIELD_HEIGHT);
+                                     self.view.frame.size.height - EDITFIELD_HEIGHT - 5,
+                                     ACTION_BUTTON_WIDTH, EDITFIELD_HEIGHT);
 	[_actionButton addTarget:self action:@selector(infoAction) forControlEvents:UIControlEventTouchUpInside];
 	_actionButton.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin;
 	[self.view addSubview:_actionButton];
@@ -544,6 +598,7 @@ void exceptionHandler(NSException *exception)
 		_inputField.delegate = self;
 		CGRect frame = self.view.bounds;
 		frame.size.height -= EDITFIELD_HEIGHT + 10;
+        
 		_consoleView.frame = frame;
 		[self.view addSubview:_inputField];
 		
@@ -557,7 +612,7 @@ void exceptionHandler(NSException *exception)
 													 name:UIKeyboardWillHideNotification
 												   object:nil];
 	}
-
+    
 	[self.consoleView scrollRangeToVisible:NSMakeRange(self.consoleView.text.length, 0)];
 }
 
@@ -565,7 +620,7 @@ void exceptionHandler(NSException *exception)
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
-	
+	self.huamingView = nil;
 	self.consoleView = nil;
 	self.inputField = nil;
 	self.actionButton = nil;
@@ -578,14 +633,14 @@ void exceptionHandler(NSException *exception)
 #pragma mark Public methods
 
 + (void)log:(NSString *)format arguments:(va_list)argList
-{	
+{
 	NSLogv(format, argList);
 	
     if ([self sharedConsole].enabled)
     {
         NSString *message = [[NSString alloc] initWithFormat:format arguments:argList];
         if ([NSThread currentThread] == [NSThread mainThread])
-        {	
+        {
             [[self sharedConsole] logOnMainThread:message];
         }
         else
@@ -685,6 +740,7 @@ void exceptionHandler(NSException *exception)
 			
 			for (UITouch *touch in touches)
 			{
+                
 				if ([touch locationInView:self].y <= [touch previousLocationInView:self].y)
 				{
 					allDown = NO;
