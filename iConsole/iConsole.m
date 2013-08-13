@@ -50,10 +50,10 @@
 #define ACTION_BUTTON_WIDTH 28
 #define HUAMING_LABEL_WIDTH 35
 
-@interface iConsole() <UITextFieldDelegate, UIActionSheetDelegate>
+@interface iConsole() <UITextFieldDelegate, UITableViewDataSource,UITableViewDelegate, UIActionSheetDelegate>
 
 @property (nonatomic,strong) UIView *huamingView;
-@property (nonatomic, strong) UITextView *consoleView;
+@property (nonatomic, strong) UITableView *consoleView;
 @property (nonatomic, strong) UITextField *inputField;
 @property (nonatomic, strong) UIButton *actionButton;
 @property (nonatomic, strong) NSMutableArray *log;
@@ -121,14 +121,17 @@ void iConsole_exceptionHandler(NSException *exception)
 	}
 	text = [text stringByAppendingString:@"\n--------------------------------------\n"];
 	text = [text stringByAppendingString:[[_log arrayByAddingObject:@">"] componentsJoinedByString:@"\n"]];
-    //text = [text stringByAppendingString:@"                                    @子循"];
     
     
     
-    _consoleView.dataDetectorTypes = UIDataDetectorTypeLink;
-	_consoleView.text = text;
+    //用来识别URL
+    //_consoleView.dataDetectorTypes = UIDataDetectorTypeLink;
+    
+    
+    //TODO：把text放进去
+	//_consoleView.text = text;
 	
-	[_consoleView scrollRangeToVisible:NSMakeRange(_consoleView.text.length, 0)];
+	//[_consoleView scrollRangeToVisible:NSMakeRange(_consoleView.text.length, 0)];
 }
 
 - (void)resetLog
@@ -378,13 +381,16 @@ void iConsole_exceptionHandler(NSException *exception)
         [self setConsoleText];
     }
 }
+#pragma mark -
+#pragma mark UITableViewDelegate methods
 
+//TODO
 #pragma mark -
 #pragma mark UITextFieldDelegate methods
 
 - (void)textFieldDidEndEditing:(UITextField *)textField
 {
-    [iConsole info:@"invoke textFieldDidEndEditing"];
+   
 	if (![textField.text isEqualToString:@""])
 	{
 		[iConsole log:textField.text];
@@ -461,17 +467,17 @@ void iConsole_exceptionHandler(NSException *exception)
         
         //在预发和Daily环境iConsole可用在正式环境iConsole禁用
 #ifdef PRERELEASE_MODE
-        _simulatorTouchesToShow = 2;
+        _simulatorTouchesToShow = 1;
         _deviceTouchesToShow = 3;
 #endif
         
 #ifdef DAILY_MODE
-        _simulatorTouchesToShow = 2;
+        _simulatorTouchesToShow = 1;
         _deviceTouchesToShow = 3;
 #endif
         
 #ifdef RELEASE_MODE
-        _simulatorTouchesToShow = 2;
+        _simulatorTouchesToShow = 1;
         _deviceTouchesToShow = 3;
 #endif
         
@@ -528,14 +534,15 @@ void iConsole_exceptionHandler(NSException *exception)
 	self.view.autoresizesSubviews = YES;
     //CGRectMake(self.view.bounds.origin.x, self.view.bounds.origin.y, self.view.bounds.size.width, self.view.bounds.size.height/2)
     
-	_consoleView = [[UITextView alloc] initWithFrame:self.view.bounds];//self.view.bounds
-	_consoleView.font = [UIFont fontWithName:@"Courier" size:12];
-	_consoleView.textColor = _textColor;
-	_consoleView.backgroundColor = [UIColor clearColor];
-    _consoleView.indicatorStyle = _indicatorStyle;
-	_consoleView.editable = NO;
-	_consoleView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-	[self setConsoleText];
+	_consoleView = [[UITableView alloc] initWithFrame:self.view.bounds];//self.view.bounds
+    
+//	_consoleView.font = [UIFont fontWithName:@"Courier" size:12];
+//	_consoleView.textColor = _textColor;
+//	_consoleView.backgroundColor = [UIColor clearColor];
+//    _consoleView.indicatorStyle = _indicatorStyle;
+//	_consoleView.editable = NO;
+//	_consoleView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+//	[self setConsoleText];
 	[self.view addSubview:_consoleView];
 	
     
@@ -613,7 +620,7 @@ void iConsole_exceptionHandler(NSException *exception)
 												   object:nil];
 	}
     
-	[self.consoleView scrollRangeToVisible:NSMakeRange(self.consoleView.text.length, 0)];
+	//[self.consoleView scrollRangeToVisible:NSMakeRange(self.consoleView.text.length, 0)];
 }
 
 - (void)viewDidUnload

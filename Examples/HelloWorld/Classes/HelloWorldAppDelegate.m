@@ -13,6 +13,7 @@
 
 - (void)applicationDidFinishLaunching:(UIApplication *)application
 {
+    [iConsole clear];
     _window = [[iConsoleWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
 	_window.rootViewController = [[HelloWorldViewController alloc] init];
     [_window makeKeyAndVisible];
