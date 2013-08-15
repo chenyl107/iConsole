@@ -93,7 +93,7 @@ iConsoleLogLevel;
 
 @property (nonatomic, strong) UIColor *backgroundColor;
 @property (nonatomic, strong) UIColor *textColor;
-@property (nonatomic, assign) UIScrollViewIndicatorStyle indicatorStyle;
+
 
 //methods
 

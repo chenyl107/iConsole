@@ -45,15 +45,20 @@
 #import "GTMStackTrace.h"
 #endif
 
+#import "iConsole_ConsoleTableViewCell.h"
+#import "UITableViewCell+LoadDetailNib.h"
 #define HUAMING_HEIGHT 15
 #define EDITFIELD_HEIGHT 28
 #define ACTION_BUTTON_WIDTH 28
 #define HUAMING_LABEL_WIDTH 35
 
+
+
+
 @interface iConsole() <UITextFieldDelegate, UITableViewDataSource,UITableViewDelegate, UIActionSheetDelegate>
 
 @property (nonatomic,strong) UIView *huamingView;
-@property (nonatomic, strong) UITableView *consoleView;
+@property (nonatomic, strong) UITableView *consoleTableView;
 @property (nonatomic, strong) UITextField *inputField;
 @property (nonatomic, strong) UIButton *actionButton;
 @property (nonatomic, strong) NSMutableArray *log;
@@ -107,7 +112,7 @@ void iConsole_exceptionHandler(NSException *exception)
     }
 }
 
-- (void)setConsoleText
+- (NSString *)getConsoleHeadText
 {
 	NSString *text = _infoString;
 	int touches = (TARGET_IPHONE_SIMULATOR ? _simulatorTouchesToShow: _deviceTouchesToShow);
@@ -120,24 +125,19 @@ void iConsole_exceptionHandler(NSException *exception)
 		text = [text stringByAppendingString:@"\nShake device to hide console"];
 	}
 	text = [text stringByAppendingString:@"\n--------------------------------------\n"];
-	text = [text stringByAppendingString:[[_log arrayByAddingObject:@">"] componentsJoinedByString:@"\n"]];
-    
-    
-    
-    //用来识别URL
-    //_consoleView.dataDetectorTypes = UIDataDetectorTypeLink;
-    
-    
-    //TODO：把text放进去
-	//_consoleView.text = text;
 	
-	//[_consoleView scrollRangeToVisible:NSMakeRange(_consoleView.text.length, 0)];
+    
+    
+    return text;
+    
 }
+
 
 - (void)resetLog
 {
 	self.log = [NSMutableArray array];
-	[self setConsoleText];
+//	[self setConsoleText];
+    [self.consoleTableView reloadData];
 }
 
 - (void)saveSettings
@@ -230,8 +230,8 @@ void iConsole_exceptionHandler(NSException *exception)
 {
 	if (!_animating && self.view.superview == nil)
 	{
-        [self setConsoleText];
-        
+       // [self setConsoleText];
+        [self.consoleTableView reloadData];
 		[self findAndResignFirstResponder:[self mainWindow]];
 		
 		[iConsole sharedConsole].view.frame = [self offscreenFrame];
@@ -287,7 +287,7 @@ void iConsole_exceptionHandler(NSException *exception)
 		CGRect frame = self.view.bounds;
 		frame.size.height -= EDITFIELD_HEIGHT + 10;
         
-		self.consoleView.frame = frame;
+		self.consoleTableView.frame = frame;
 	}
 }
 
@@ -378,13 +378,13 @@ void iConsole_exceptionHandler(NSException *exception)
     [[NSUserDefaults standardUserDefaults] setObject:_log forKey:@"iConsoleLog"];
     if (self.view.superview)
     {
-        [self setConsoleText];
+       // [self setConsoleText];
+        [self.consoleTableView reloadData];
     }
 }
-#pragma mark -
-#pragma mark UITableViewDelegate methods
 
-//TODO
+
+
 #pragma mark -
 #pragma mark UITextFieldDelegate methods
 
@@ -410,6 +410,107 @@ void iConsole_exceptionHandler(NSException *exception)
 	return YES;
 }
 
+
+#pragma mark-
+#pragma mark UITableViewDelegate & UITableViewDatasource
+
+- (int) numberOfSectionsInTableView:(UITableView *)tableView {
+    
+    return 2;
+}
+
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    if (section == 0) {
+        return 1;
+    }else{
+        return  [_log count];
+    }
+    
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    
+    if (indexPath.section == 0) {
+        return 50;
+    }else{
+        
+        NSString *text  = @"> ";//[_log objectAtIndex:indexPath.row];
+        
+        
+        text = [text stringByAppendingString:[_log objectAtIndex:indexPath.row]];
+        
+        if ((long)indexPath.row+1 == (unsigned long)[_log count]) {
+            text = [text stringByAppendingString:@"\n>"]  ;
+        
+        }
+        
+        
+        CGSize constraint = CGSizeMake(self.consoleTableView.frame.size.width-16,2000);
+        CGSize size = [text sizeWithFont:[UIFont fontWithName:@"Courier" size:12] constrainedToSize:constraint lineBreakMode:UILineBreakModeWordWrap];
+        
+       
+        CGFloat height = size.height;
+        
+        return height +16;//+ 20*height/(self.consoleTableView.frame.size.width-20);
+        
+      
+        
+
+    }
+   
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *cellIdentifier = @"iConsole_ConsoleTableViewCell";
+    iConsole_ConsoleTableViewCell *cell =[tableView dequeueReusableCellWithIdentifier:cellIdentifier];
+    if (cell == nil) {
+
+        cell = [[[NSBundle mainBundle] loadNibNamed:@"iConsole_ConsoleTableViewCell" owner:nil options:nil] objectAtIndex:0];
+
+    }
+    
+    
+    cell.consoleView.indicatorStyle = UIScrollViewIndicatorStyleWhite;
+    cell.consoleView.editable = NO;
+    cell.consoleView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+    
+    cell.consoleView.dataDetectorTypes = UIDataDetectorTypeLink;
+    cell.consoleView.textColor = [UIColor blackColor];
+    cell.consoleView.backgroundColor = [UIColor clearColor];
+   
+    cell.consoleView.font = [UIFont fontWithName:@"Courier" size:12];
+    cell.consoleView.scrollEnabled = NO;
+//    cell.consoleView.contentInset = UIEdgeInsetsMake(-10,-8,0,8);
+    [ cell.consoleView setTag:1];
+    
+    if (indexPath.section == 0) {
+        cell.consoleView.text = [self getConsoleHeadText];
+    }else
+    {
+        
+        
+        //设置输出信息
+        NSString *text  = [[NSString alloc]init];//[_log objectAtIndex:indexPath.row];
+        
+        
+        text = [text stringByAppendingString:[_log objectAtIndex:indexPath.row]];
+        NSLog(@"%ld,%lu",(long)indexPath.row,(unsigned long)[_log count]);
+        if ((long)indexPath.row+1 == (unsigned long)[_log count]) {
+            text = [text stringByAppendingString:@"\n>"]  ;
+            
+        }
+    
+        cell.consoleView.text = text;
+
+
+    }
+    NSLog(@"cell.frame.size.height:%f",cell.frame.size.height);
+    NSLog(@"cell.consoleView.frame.size.height:%f",cell.consoleView.frame.size.height);
+    return cell;
+}
 
 #pragma mark -
 #pragma mark UIActionSheetDelegate methods
@@ -496,7 +597,7 @@ void iConsole_exceptionHandler(NSException *exception)
         
         self.backgroundColor = [UIColor whiteColor];
         self.textColor = [UIColor blackColor];
-        self.indicatorStyle = UIScrollViewIndicatorStyleWhite;
+     
         
         [[NSUserDefaults standardUserDefaults] synchronize];
         self.log = [NSMutableArray arrayWithArray:[[NSUserDefaults standardUserDefaults] objectForKey:@"iConsoleLog"]];
@@ -532,28 +633,20 @@ void iConsole_exceptionHandler(NSException *exception)
     self.view.clipsToBounds = YES;
 	self.view.backgroundColor = _backgroundColor;
 	self.view.autoresizesSubviews = YES;
-    //CGRectMake(self.view.bounds.origin.x, self.view.bounds.origin.y, self.view.bounds.size.width, self.view.bounds.size.height/2)
     
-	_consoleView = [[UITableView alloc] initWithFrame:self.view.bounds];//self.view.bounds
+	_consoleTableView = [[UITableView alloc] initWithFrame:self.view.bounds];
     
-//	_consoleView.font = [UIFont fontWithName:@"Courier" size:12];
-//	_consoleView.textColor = _textColor;
-//	_consoleView.backgroundColor = [UIColor clearColor];
-//    _consoleView.indicatorStyle = _indicatorStyle;
-//	_consoleView.editable = NO;
-//	_consoleView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-//	[self setConsoleText];
-	[self.view addSubview:_consoleView];
+   // _consoleTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    _consoleTableView.delegate =self;
+    _consoleTableView.dataSource =self;
+    [self.view addSubview:_consoleTableView];
 	
     
-    
-    
-    
-    
+    //设置花名
     _huamingView = [[UIView alloc]initWithFrame:CGRectMake(self.view.frame.size.width-HUAMING_LABEL_WIDTH,
                                                            self.view.frame.size.height - HUAMING_HEIGHT- EDITFIELD_HEIGHT - 5,
                                                            HUAMING_LABEL_WIDTH, HUAMING_HEIGHT)];
-    _huamingView.backgroundColor = [UIColor redColor];
+    _huamingView.backgroundColor = [UIColor clearColor];
     _huamingView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     [self.view addSubview:_huamingView];
     UILabel *huamingLabel  = [[UILabel alloc]init];
@@ -567,14 +660,7 @@ void iConsole_exceptionHandler(NSException *exception)
     [self.huamingView addSubview:huamingLabel];
     
 	
-    
-    
-    
-    
-    
-    
-    
-    
+    //事件按钮设置
 	self.actionButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_actionButton setTitle:@"⚙" forState:UIControlStateNormal];
     [_actionButton setTitleColor:_textColor forState:UIControlStateNormal];
@@ -587,6 +673,7 @@ void iConsole_exceptionHandler(NSException *exception)
 	_actionButton.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin;
 	[self.view addSubview:_actionButton];
 	
+    //命令行控件设置
 	if (_delegate)
 	{
 		_inputField = [[UITextField alloc] initWithFrame:CGRectMake(5, self.view.frame.size.height - EDITFIELD_HEIGHT - 5,
@@ -606,7 +693,7 @@ void iConsole_exceptionHandler(NSException *exception)
 		CGRect frame = self.view.bounds;
 		frame.size.height -= EDITFIELD_HEIGHT + 10;
         
-		_consoleView.frame = frame;
+		_consoleTableView.frame = frame;
 		[self.view addSubview:_inputField];
 		
 		[[NSNotificationCenter defaultCenter] addObserver:self
@@ -620,6 +707,7 @@ void iConsole_exceptionHandler(NSException *exception)
 												   object:nil];
 	}
     
+    //这行有用
 	//[self.consoleView scrollRangeToVisible:NSMakeRange(self.consoleView.text.length, 0)];
 }
 
@@ -628,7 +716,7 @@ void iConsole_exceptionHandler(NSException *exception)
 	[[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
 	self.huamingView = nil;
-	self.consoleView = nil;
+	self.consoleTableView = nil;
 	self.inputField = nil;
 	self.actionButton = nil;
     
@@ -841,5 +929,7 @@ void iConsole_exceptionHandler(NSException *exception)
 	}
 	[super motionEnded:motion withEvent:event];
 }
+
+
 
 @end
