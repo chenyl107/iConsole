@@ -1,3 +1,7 @@
+修改优化
+--------------
+改造iConsole底层视图实现，将UITextView改成UITableview，因为UITextView在大批量日志信息输出时有新能问题，每次都要刷新整个UITextView，而UITableview只需要做插入即可，使用方法还是和原来一样。
+
 Purpose
 --------------
 
